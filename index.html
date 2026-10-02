@@ -1,0 +1,856 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>คำนวณราคางานพิมพ์</title>
+<meta name="theme-color" content="#0f766e">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f3f5f7;
+    --card: #ffffff;
+    --text: #1f2933;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --accent: #0f766e;
+    --accent-soft: #ccfbf1;
+    --accent-text: #ffffff;
+    --danger: #dc2626;
+    --danger-soft: #fef2f2;
+    --input: #ffffff;
+    --radius: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --line: #334155;
+      --accent: #14b8a6;
+      --accent-soft: #134e4a;
+      --accent-text: #042f2e;
+      --danger: #f87171;
+      --danger-soft: #3b1d1d;
+      --input: #0f172a;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Sarabun", "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  header {
+    position: sticky; top: 0; z-index: 20;
+    background: var(--accent); color: var(--accent-text);
+    padding: 10px 16px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  header h1 { font-size: 18px; margin: 0; font-weight: 700; }
+  .tabs { display: flex; gap: 4px; background: rgba(0,0,0,.15); border-radius: 999px; padding: 3px; }
+  .tabs button {
+    border: 0; background: transparent; color: inherit; font: inherit; font-weight: 600;
+    padding: 6px 14px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+  }
+  @media (max-width: 420px) {
+    header h1 { font-size: 16px; }
+    .tabs button { padding: 6px 10px; }
+  }
+  header h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tabs button.active { background: var(--card); color: var(--accent); }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+  .layout { display: grid; gap: 16px; }
+  @media (min-width: 860px) {
+    .layout { grid-template-columns: minmax(0, 1fr) minmax(0, 420px); align-items: start; }
+    .result-col { position: sticky; top: 72px; }
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 16px; margin-bottom: 16px;
+  }
+  .card h2 { font-size: 17px; margin: 0 0 12px; }
+  .field { margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+  .label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 15px; }
+  .hint { color: var(--muted); font-size: 13px; }
+  .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seg button {
+    flex: 1 1 0; min-width: 72px;
+    border: 1.5px solid var(--line); background: var(--input); color: var(--text);
+    font: inherit; font-weight: 600; padding: 9px 10px; border-radius: 10px; cursor: pointer;
+  }
+  .seg button.active { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+  .seg.wrap2 button { flex-basis: calc(50% - 6px); }
+  input[type=number], input[type=text], select {
+    width: 100%; font: inherit; color: var(--text); background: var(--input);
+    border: 1.5px solid var(--line); border-radius: 10px; padding: 9px 11px;
+  }
+  input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .hidden { display: none !important; }
+
+  .price-box { text-align: center; padding: 6px 0 4px; }
+  .price-box .cap { color: var(--muted); font-size: 14px; }
+  .price-total { font-size: 44px; font-weight: 800; color: var(--accent); line-height: 1.15; }
+  .price-unit { font-size: 22px; font-weight: 700; margin-top: 2px; }
+  .warns { margin-top: 12px; }
+  .warn {
+    color: var(--danger); background: var(--danger-soft); border-radius: 8px;
+    padding: 8px 10px; font-weight: 600; font-size: 14px; margin-bottom: 6px;
+  }
+  table.detail { width: 100%; border-collapse: collapse; font-size: 15px; }
+  table.detail td { padding: 6px 0; border-bottom: 1px dashed var(--line); vertical-align: top; }
+  table.detail td:last-child { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; padding-left: 8px; }
+  table.detail tr.sum td { font-weight: 700; border-bottom: 1px solid var(--line); }
+  table.detail tr.sub td:first-child { padding-left: 14px; color: var(--muted); }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    border: 0; background: var(--accent); color: var(--accent-text);
+    font: inherit; font-weight: 700; padding: 11px 16px; border-radius: 10px; cursor: pointer;
+  }
+  .btn.block { width: 100%; }
+  .btn.ghost { background: transparent; color: var(--accent); border: 1.5px solid var(--accent); }
+  .btn.small { padding: 6px 10px; font-size: 14px; }
+  .btn.danger { background: transparent; color: var(--danger); border: 1.5px solid var(--line); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .quote-preview {
+    white-space: pre-wrap; background: var(--bg); border-radius: 8px; padding: 10px;
+    font-size: 14px; margin: 10px 0 0; color: var(--text);
+  }
+  .toast {
+    position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%);
+    background: #111827; color: #fff; padding: 10px 16px; border-radius: 999px;
+    font-weight: 600; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 50;
+  }
+  .toast.show { opacity: 1; }
+
+  /* แถบราคาด้านล่างบนมือถือ */
+  .mobile-bar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 15;
+    background: var(--card); border-top: 1px solid var(--line);
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    box-shadow: 0 -4px 14px rgba(0,0,0,.08);
+  }
+  .mobile-bar .t { font-size: 24px; font-weight: 800; color: var(--accent); line-height: 1.1; }
+  .mobile-bar .u { font-size: 13px; color: var(--muted); }
+  @media (min-width: 860px) { .mobile-bar { display: none; } }
+  @media (max-width: 859px) { body.calc-view { padding-bottom: 80px; } }
+
+  /* ตั้งค่า */
+  .set-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .list-row { display: grid; gap: 8px; align-items: end; padding: 10px 0; border-bottom: 1px dashed var(--line); }
+  .list-row:last-of-type { border-bottom: 0; }
+  .paper-row { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto; }
+  .tier-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; }
+  @media (max-width: 520px) {
+    .paper-row { grid-template-columns: 1fr 1fr; }
+    .paper-row .name { grid-column: 1 / -1; }
+  }
+  .list-row label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 2px; }
+  .set-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .saved-note { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+</style>
+</head>
+<body class="calc-view">
+<header>
+  <h1>🖨️ คำนวณราคางานพิมพ์</h1>
+  <nav class="tabs">
+    <button type="button" data-tab="calc" class="active">คำนวณ</button>
+    <button type="button" data-tab="settings">ตั้งค่า</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ===================== หน้าคำนวณ ===================== -->
+  <section id="view-calc">
+    <div class="layout">
+      <div>
+        <div class="card">
+          <div class="field">
+            <span class="label">ขนาดชิ้นงาน</span>
+            <div class="seg" data-key="size">
+              <button type="button" data-val="A4">A4</button>
+              <button type="button" data-val="A5">A5</button>
+              <button type="button" data-val="A6">A6</button>
+            </div>
+          </div>
+          <div class="field">
+            <span class="label">ประเภทงาน</span>
+            <div class="seg" data-key="type">
+              <button type="button" data-val="sheet">งานแผ่น (ไม่เข้าเล่ม)</button>
+              <button type="button" data-val="book">งานเล่ม</button>
+            </div>
+          </div>
+
+          <div class="field only-sheet">
+            <label class="label" for="qtySheets">จำนวนแผ่น</label>
+            <input type="number" id="qtySheets" data-key="qtySheets" min="1" step="1" inputmode="numeric" placeholder="เช่น 100">
+          </div>
+
+          <div class="row2 only-book field">
+            <div>
+              <label class="label" for="pages">จำนวนหน้ารวมต่อเล่ม</label>
+              <input type="number" id="pages" data-key="pages" min="1" step="1" inputmode="numeric" placeholder="รวมปก">
+            </div>
+            <div>
+              <label class="label" for="books">จำนวนเล่ม</label>
+              <input type="number" id="books" data-key="books" min="1" step="1" inputmode="numeric" placeholder="เช่น 50">
+            </div>
+          </div>
+
+          <div class="field">
+            <span class="label">การพิมพ์สี</span>
+            <div class="seg" data-key="sides">
+              <button type="button" data-val="1">หน้าเดียว</button>
+              <button type="button" data-val="2">สองด้าน</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="label" for="paperId"><span class="only-sheet">กระดาษ</span><span class="only-book">กระดาษเนื้อใน</span></label>
+            <select id="paperId" data-key="paperId"></select>
+          </div>
+        </div>
+
+        <div class="card only-book">
+          <h2>การเข้าเล่มและปก</h2>
+          <div class="field">
+            <span class="label">วิธีเข้าเล่ม</span>
+            <div class="seg wrap2" data-key="binding">
+              <button type="button" data-val="staple">เย็บแม็กมุม</button>
+              <button type="button" data-val="saddle">เย็บมุงหลังคา</button>
+              <button type="button" data-val="perfect">ไสกาว</button>
+              <button type="button" data-val="ring">สันห่วง</button>
+            </div>
+          </div>
+          <div class="field">
+            <span class="label">ปก</span>
+            <div class="seg" data-key="coverMode">
+              <button type="button" data-val="same">กระดาษเดียวกับเนื้อใน</button>
+              <button type="button" data-val="separate">กระดาษปกแยก</button>
+            </div>
+            <div class="hint" id="coverHint" style="margin-top:4px"></div>
+          </div>
+          <div class="field only-separate">
+            <label class="label" for="coverPaperId">กระดาษปก</label>
+            <select id="coverPaperId" data-key="coverPaperId"></select>
+          </div>
+          <div class="field">
+            <span class="label">เคลือบปก</span>
+            <div class="seg" data-key="laminate">
+              <button type="button" data-val="none">ไม่เคลือบ</button>
+              <button type="button" data-val="matte">เคลือบด้าน</button>
+              <button type="button" data-val="gloss">เคลือบเงา</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="result-col">
+        <div class="card">
+          <div class="price-box">
+            <div class="cap">ราคาขายรวม</div>
+            <div class="price-total" id="outTotal">–</div>
+            <div class="price-unit" id="outUnit"></div>
+          </div>
+          <div class="warns" id="warns"></div>
+        </div>
+
+        <div class="card">
+          <h2>รายละเอียด</h2>
+          <table class="detail" id="detail"></table>
+        </div>
+
+        <div class="card">
+          <button type="button" class="btn block" id="btnCopy">📋 คัดลอกใบเสนอราคา</button>
+          <div class="quote-preview" id="quotePreview"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== หน้าตั้งค่า ===================== -->
+  <section id="view-settings" class="hidden">
+    <div class="saved-note">✅ ค่าที่แก้จะบันทึกอัตโนมัติในเครื่องนี้ (เบราว์เซอร์นี้) และใช้ต่อในครั้งถัดไป</div>
+
+    <div class="card">
+      <h2>รายการกระดาษ</h2>
+      <div id="paperList"></div>
+      <button type="button" class="btn ghost small" id="btnAddPaper" style="margin-top:10px">+ เพิ่มกระดาษ</button>
+    </div>
+
+    <div class="card">
+      <h2>ค่าพิมพ์ เข้าเล่ม และเคลือบ (บาท)</h2>
+      <div class="set-grid">
+        <div><label class="label" for="s-printPerSide">ค่าพิมพ์สีต่อด้าน</label><input type="number" step="any" min="0" id="s-printPerSide" data-set="printPerSide"></div>
+        <div><label class="label" for="s-bind-staple">เย็บแม็กมุม / เล่ม</label><input type="number" step="any" min="0" id="s-bind-staple" data-set="binding.staple"></div>
+        <div><label class="label" for="s-bind-saddle">เย็บมุงหลังคา / เล่ม</label><input type="number" step="any" min="0" id="s-bind-saddle" data-set="binding.saddle"></div>
+        <div><label class="label" for="s-bind-perfect">ไสกาว / เล่ม</label><input type="number" step="any" min="0" id="s-bind-perfect" data-set="binding.perfect"></div>
+        <div><label class="label" for="s-bind-ring">สันห่วง / เล่ม</label><input type="number" step="any" min="0" id="s-bind-ring" data-set="binding.ring"></div>
+        <div><label class="label" for="s-lam-matte">เคลือบด้าน / แผ่นใหญ่</label><input type="number" step="any" min="0" id="s-lam-matte" data-set="laminate.matte"></div>
+        <div><label class="label" for="s-lam-gloss">เคลือบเงา / แผ่นใหญ่</label><input type="number" step="any" min="0" id="s-lam-gloss" data-set="laminate.gloss"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>แผ่นใหญ่และการวางงาน</h2>
+      <div class="set-grid">
+        <div><label class="label" for="s-sheetSize">ขนาดแผ่นใหญ่</label><input type="text" id="s-sheetSize" data-set="sheetSize"></div>
+        <div><label class="label" for="s-waste">% เผื่อเสีย</label><input type="number" step="any" min="0" id="s-waste" data-set="wastePct"></div>
+        <div><label class="label" for="s-per-A4">A4 ชิ้น/แผ่น</label><input type="number" step="1" min="1" id="s-per-A4" data-set="perSheet.A4"></div>
+        <div><label class="label" for="s-per-A5">A5 ชิ้น/แผ่น</label><input type="number" step="1" min="1" id="s-per-A5" data-set="perSheet.A5"></div>
+        <div><label class="label" for="s-per-A6">A6 ชิ้น/แผ่น</label><input type="number" step="1" min="1" id="s-per-A6" data-set="perSheet.A6"></div>
+        <div><label class="label" for="s-cov-A4">A4 ปก/แผ่น</label><input type="number" step="1" min="1" id="s-cov-A4" data-set="coverPerSheet.A4"></div>
+        <div><label class="label" for="s-cov-A5">A5 ปก/แผ่น</label><input type="number" step="1" min="1" id="s-cov-A5" data-set="coverPerSheet.A5"></div>
+        <div><label class="label" for="s-cov-A6">A6 ปก/แผ่น</label><input type="number" step="1" min="1" id="s-cov-A6" data-set="coverPerSheet.A6"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>กำไรตามช่วงจำนวน</h2>
+      <div class="hint" style="margin-bottom:6px">นับจำนวนเล่ม (งานเล่ม) หรือจำนวนแผ่น (งานแผ่น) — ใช้ % ของแถวที่ "ตั้งแต่" มากที่สุดที่ไม่เกินจำนวนงาน</div>
+      <div id="tierList"></div>
+      <button type="button" class="btn ghost small" id="btnAddTier" style="margin-top:10px">+ เพิ่มช่วง</button>
+    </div>
+
+    <div class="card">
+      <h2>การปัดราคาและราคาขั้นต่ำ</h2>
+      <div class="set-grid">
+        <div><label class="label" for="s-roundTo">ปัดขึ้นทีละ (บาท)</label><input type="number" step="1" min="0" id="s-roundTo" data-set="roundTo"></div>
+        <div><label class="label" for="s-minPrice">ราคาขั้นต่ำต่องาน (บาท)</label><input type="number" step="any" min="0" id="s-minPrice" data-set="minPrice"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>เงื่อนไขการเข้าเล่ม</h2>
+      <div class="set-grid">
+        <div><label class="label" for="s-saddleMax">เย็บมุงหลังคา สูงสุด (หน้า)</label><input type="number" step="1" min="1" id="s-saddleMax" data-set="saddleMaxPages"></div>
+        <div><label class="label" for="s-ringMax">สันห่วง สูงสุด (แผ่น/เล่ม)</label><input type="number" step="1" min="1" id="s-ringMax" data-set="ringMaxSheets"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>ใบเสนอราคา</h2>
+      <div class="set-grid">
+        <div><label class="label" for="s-shopName">ชื่อร้าน (หัวข้อความ)</label><input type="text" id="s-shopName" data-set="shopName" placeholder="ไม่ใส่ก็ได้"></div>
+        <div><label class="label" for="s-quoteNote">หมายเหตุท้ายข้อความ</label><input type="text" id="s-quoteNote" data-set="quoteNote" placeholder="เช่น ยืนราคา 7 วัน"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>สำรอง / ย้ายเครื่อง</h2>
+      <div class="hint" style="margin-bottom:10px">ค่าตั้งค่าเก็บแยกในแต่ละเครื่อง ใช้ส่งออกไฟล์แล้วนำเข้าในอีกเครื่องเพื่อให้ราคาตรงกัน</div>
+      <div class="set-actions">
+        <button type="button" class="btn ghost small" id="btnExport">⬇️ ส่งออกไฟล์ตั้งค่า</button>
+        <button type="button" class="btn ghost small" id="btnImport">⬆️ นำเข้าไฟล์ตั้งค่า</button>
+        <button type="button" class="btn danger small" id="btnReset">คืนค่าเริ่มต้น</button>
+        <input type="file" id="importFile" accept=".json,application/json" class="hidden">
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="mobile-bar" id="mobileBar">
+  <div>
+    <div class="t" id="barTotal">–</div>
+    <div class="u" id="barUnit"></div>
+  </div>
+  <button type="button" class="btn small" id="btnCopy2">📋 คัดลอก</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var SETTINGS_KEY = 'printcalc.settings.v1';
+  var FORM_KEY = 'printcalc.form.v1';
+
+  var DEFAULTS = {
+    shopName: '',
+    quoteNote: '',
+    sheetSize: '317 × 470 มม.',
+    papers: [
+      { id: 'p1', name: 'ปอนด์', gsm: 80, price: 1.5 },
+      { id: 'p2', name: 'อาร์ตมัน', gsm: 120, price: 2.5 },
+      { id: 'p3', name: 'อาร์ตมัน', gsm: 160, price: 3.5 },
+      { id: 'p4', name: 'อาร์ตการ์ด', gsm: 260, price: 6 }
+    ],
+    printPerSide: 6,
+    binding: { staple: 2, saddle: 5, perfect: 25, ring: 30 },
+    laminate: { matte: 5, gloss: 5 },
+    perSheet: { A4: 2, A5: 4, A6: 9 },
+    coverPerSheet: { A4: 1, A5: 2, A6: 4 },
+    wastePct: 3,
+    tiers: [
+      { min: 1, pct: 100 },
+      { min: 50, pct: 80 },
+      { min: 200, pct: 60 },
+      { min: 500, pct: 50 }
+    ],
+    roundTo: 5,
+    minPrice: 0,
+    saddleMaxPages: 60,
+    ringMaxSheets: 200
+  };
+
+  var FORM_DEFAULTS = {
+    size: 'A4', type: 'sheet', qtySheets: '', pages: '', books: '',
+    sides: '2', paperId: '', binding: 'saddle', coverMode: 'same',
+    coverPaperId: '', laminate: 'none'
+  };
+
+  var BINDING_NAMES = { staple: 'เย็บแม็กมุม', saddle: 'เย็บมุงหลังคา', perfect: 'ไสกาว', ring: 'สันห่วง' };
+  var LAMINATE_NAMES = { none: 'ไม่เคลือบ', matte: 'เคลือบด้าน', gloss: 'เคลือบเงา' };
+
+  // ---------- storage ----------
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function readJSON(key) {
+    try { var v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch (e) { return null; }
+  }
+  function writeJSON(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { /* ignore */ }
+  }
+  function mergeSettings(saved) {
+    var s = clone(DEFAULTS);
+    if (!saved || typeof saved !== 'object') return s;
+    Object.keys(s).forEach(function (k) {
+      if (!(k in saved)) return;
+      if (Array.isArray(s[k])) { if (Array.isArray(saved[k])) s[k] = saved[k]; }
+      else if (s[k] && typeof s[k] === 'object') { Object.assign(s[k], saved[k] || {}); }
+      else s[k] = saved[k];
+    });
+    s.papers.forEach(function (p, i) { if (!p.id) p.id = 'p' + Date.now() + i; });
+    return s;
+  }
+
+  var S = mergeSettings(readJSON(SETTINGS_KEY));
+  var F = Object.assign({}, FORM_DEFAULTS, readJSON(FORM_KEY) || {});
+
+  function saveSettings() { writeJSON(SETTINGS_KEY, S); }
+  function saveForm() { writeJSON(FORM_KEY, F); }
+
+  // ---------- helpers ----------
+  function num(v) { var n = parseFloat(v); return isFinite(n) ? n : 0; }
+  function int(v) { var n = parseInt(v, 10); return isFinite(n) && n > 0 ? n : 0; }
+  // ปัดขึ้นแบบกันเศษทศนิยมของ float (เช่น 100 × 1.03 = 103.00000000000001)
+  function ceilSafe(x) { return Math.ceil(+x.toFixed(6)); }
+  function fmt(n, d) {
+    d = d == null ? 0 : d;
+    return n.toLocaleString('th-TH', { minimumFractionDigits: d, maximumFractionDigits: d });
+  }
+  function fmtMoney(n) {
+    var d = Math.abs(n - Math.round(n)) < 0.005 ? 0 : 2;
+    return fmt(n, d);
+  }
+  function paperById(id) {
+    for (var i = 0; i < S.papers.length; i++) if (S.papers[i].id === id) return S.papers[i];
+    return S.papers[0] || null;
+  }
+  function paperLabel(p) {
+    if (!p) return '-';
+    return p.name + (num(p.gsm) ? ' ' + fmt(num(p.gsm)) + ' แกรม' : '');
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  // ---------- คำนวณ ----------
+  function calculate(f, s) {
+    var r = { ok: false, warnings: [] };
+    var isBook = f.type === 'book';
+    var sides = f.sides === '1' ? 1 : 2;
+    var per = Math.max(1, int(s.perSheet[f.size]) || 1);
+    var coverPer = Math.max(1, int(s.coverPerSheet[f.size]) || 1);
+    var waste = num(s.wastePct);
+    function addWaste(n) { return n > 0 ? ceilSafe(n * (1 + waste / 100)) : 0; }
+
+    var innerPaper = paperById(f.paperId);
+    if (!innerPaper) { r.warnings.push('ยังไม่มีรายการกระดาษ — เพิ่มได้ที่หน้าตั้งค่า'); return r; }
+
+    var qty, innerRaw, coverRaw = 0, lamRaw = 0, innerPages = 0, workPerBook = 0;
+    var separate = isBook && f.coverMode === 'separate';
+    var coverPaper = separate ? paperById(f.coverPaperId) : null;
+
+    if (!isBook) {
+      qty = int(f.qtySheets);
+      if (!qty) return r;
+      innerRaw = Math.ceil(qty / per);
+    } else {
+      var pages = int(f.pages);
+      qty = int(f.books);
+      if (!pages || !qty) return r;
+      innerPages = separate ? Math.max(pages - 4, 0) : pages;
+      workPerBook = Math.ceil(innerPages / sides);
+      innerRaw = Math.ceil(workPerBook * qty / per);
+      if (separate) coverRaw = Math.ceil(qty / coverPer);
+      if (f.laminate !== 'none') lamRaw = Math.ceil(qty / coverPer);
+
+      // เงื่อนไขการเข้าเล่ม (เตือนอย่างเดียว)
+      if (separate && pages <= 4) r.warnings.push('ปกแยกนับเป็น 4 หน้า — จำนวนหน้ารวม ' + pages + ' หน้า ไม่เหลือเนื้อใน');
+      if (f.binding === 'saddle') {
+        if (pages % 4 !== 0) {
+          r.warnings.push('เย็บมุงหลังคา: จำนวนหน้ารวมต้องหาร 4 ลงตัว (ตอนนี้ ' + pages + ' หน้า แนะนำ ' + (Math.ceil(pages / 4) * 4) + ' หน้า)');
+        }
+        if (pages > int(s.saddleMaxPages)) {
+          r.warnings.push('เย็บมุงหลังคา: ไม่ควรเกิน ' + fmt(int(s.saddleMaxPages)) + ' หน้า (ตอนนี้ ' + fmt(pages) + ' หน้า)');
+        }
+      }
+      if (f.binding === 'ring') {
+        var sheetsPerBook = workPerBook + (separate ? 2 : 0);
+        if (sheetsPerBook > int(s.ringMaxSheets)) {
+          r.warnings.push('สันห่วง: ไม่ควรเกิน ' + fmt(int(s.ringMaxSheets)) + ' แผ่นต่อเล่ม (ตอนนี้ ' + fmt(sheetsPerBook) + ' แผ่น)');
+        }
+      }
+    }
+
+    var innerSheets = addWaste(innerRaw);
+    var coverSheets = addWaste(coverRaw);
+    var lamSheets = addWaste(lamRaw);
+    var totalSheets = innerSheets + coverSheets;
+    var sidesPrinted = totalSheets * sides;
+
+    var paperInner = innerSheets * num(innerPaper.price);
+    var paperCover = coverSheets * (coverPaper ? num(coverPaper.price) : 0);
+    var printCost = sidesPrinted * num(s.printPerSide);
+    var bindCost = isBook ? num(s.binding[f.binding]) * qty : 0;
+    var lamCost = isBook && f.laminate !== 'none' ? lamSheets * num(s.laminate[f.laminate]) : 0;
+    var cost = paperInner + paperCover + printCost + bindCost + lamCost;
+
+    var tiers = (s.tiers || []).slice().sort(function (a, b) { return num(a.min) - num(b.min); });
+    var pct = tiers.length ? num(tiers[0].pct) : 0;
+    tiers.forEach(function (t) { if (qty >= num(t.min)) pct = num(t.pct); });
+
+    var raw = cost * (1 + pct / 100);
+    var roundTo = num(s.roundTo);
+    var price = roundTo > 0 ? ceilSafe(raw / roundTo) * roundTo : ceilSafe(raw);
+    var minApplied = false;
+    if (price < num(s.minPrice)) { price = num(s.minPrice); minApplied = true; }
+
+    Object.assign(r, {
+      ok: true, isBook: isBook, qty: qty, sides: sides, per: per, coverPer: coverPer,
+      innerPages: innerPages, workPerBook: workPerBook,
+      innerRaw: innerRaw, coverRaw: coverRaw, lamRaw: lamRaw,
+      innerSheets: innerSheets, coverSheets: coverSheets, lamSheets: lamSheets,
+      totalSheets: totalSheets, sidesPrinted: sidesPrinted,
+      innerPaper: innerPaper, coverPaper: coverPaper, separate: separate,
+      paperInner: paperInner, paperCover: paperCover, printCost: printCost,
+      bindCost: bindCost, lamCost: lamCost, cost: cost,
+      pct: pct, raw: raw, price: price, minApplied: minApplied,
+      unit: price / qty, profit: price - cost,
+      profitPct: cost > 0 ? (price - cost) / cost * 100 : 0
+    });
+    return r;
+  }
+  window.calculatePrice = calculate; // ใช้ทดสอบ
+
+  // ---------- ใบเสนอราคา ----------
+  function quoteText(f, r) {
+    var L = [];
+    L.push(S.shopName ? 'ใบเสนอราคา — ' + S.shopName : 'ใบเสนอราคา');
+    if (r.isBook) {
+      var pages = int(f.pages);
+      L.push('งาน: สิ่งพิมพ์เข้าเล่ม ขนาด ' + f.size + ' ' + fmt(pages) + ' หน้า' +
+        (r.separate ? ' (เนื้อใน ' + fmt(r.innerPages) + ' หน้า + ปก 4 หน้า)' : ''));
+    } else {
+      L.push('งาน: พิมพ์แผ่น ขนาด ' + f.size);
+    }
+    L.push('พิมพ์: 4 สี ' + (r.sides === 2 ? 'สองด้าน' : 'หน้าเดียว'));
+    L.push((r.isBook ? 'กระดาษเนื้อใน: ' : 'กระดาษ: ') + paperLabel(r.innerPaper));
+    if (r.isBook) {
+      var cov = r.separate ? paperLabel(r.coverPaper) : 'กระดาษเดียวกับเนื้อใน';
+      if (f.laminate !== 'none') cov += ' ' + LAMINATE_NAMES[f.laminate];
+      L.push('ปก: ' + cov);
+      L.push('เข้าเล่ม: ' + BINDING_NAMES[f.binding]);
+      L.push('จำนวน: ' + fmt(r.qty) + ' เล่ม');
+    } else {
+      L.push('จำนวน: ' + fmt(r.qty) + ' แผ่น');
+    }
+    L.push('');
+    L.push('ราคารวม ' + fmtMoney(r.price) + ' บาท');
+    L.push('(' + (r.isBook ? 'เล่มละ ' : 'แผ่นละ ') + fmt(r.unit, 2) + ' บาท)');
+    if (S.quoteNote) { L.push(''); L.push(S.quoteNote); }
+    return L.join('\n');
+  }
+
+  // ---------- render หน้าคำนวณ ----------
+  var $ = function (id) { return document.getElementById(id); };
+  var lastQuote = '';
+
+  function fillPaperSelect(sel, value) {
+    sel.innerHTML = S.papers.map(function (p) {
+      return '<option value="' + esc(p.id) + '">' + esc(paperLabel(p)) + ' — ' + fmtMoney(num(p.price)) + ' บ./แผ่น</option>';
+    }).join('');
+    var exists = S.papers.some(function (p) { return p.id === value; });
+    sel.value = exists ? value : (S.papers[0] ? S.papers[0].id : '');
+    return sel.value;
+  }
+
+  function syncForm() {
+    document.querySelectorAll('.seg[data-key]').forEach(function (seg) {
+      var key = seg.getAttribute('data-key');
+      seg.querySelectorAll('button').forEach(function (b) {
+        b.classList.toggle('active', b.getAttribute('data-val') === String(F[key]));
+      });
+    });
+    ['qtySheets', 'pages', 'books'].forEach(function (k) {
+      if ($(k).value !== String(F[k])) $(k).value = F[k];
+    });
+    F.paperId = fillPaperSelect($('paperId'), F.paperId);
+    if (!F.coverPaperId) {
+      var card = S.papers.filter(function (p) { return num(p.gsm) >= 200; })[0];
+      F.coverPaperId = card ? card.id : '';
+    }
+    F.coverPaperId = fillPaperSelect($('coverPaperId'), F.coverPaperId);
+
+    var isBook = F.type === 'book';
+    document.querySelectorAll('.only-book').forEach(function (el) { el.classList.toggle('hidden', !isBook); });
+    document.querySelectorAll('.only-sheet').forEach(function (el) { el.classList.toggle('hidden', isBook); });
+    document.querySelectorAll('.only-separate').forEach(function (el) { el.classList.toggle('hidden', F.coverMode !== 'separate'); });
+    $('coverHint').textContent = F.coverMode === 'separate'
+      ? 'นับปกเป็น 4 หน้า ที่เหลือเป็นเนื้อใน'
+      : 'ปกพิมพ์รวมอยู่ในเนื้อใน';
+  }
+
+  function row(label, value, cls) {
+    return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + label + '</td><td>' + value + '</td></tr>';
+  }
+  function sheetsText(raw, withWaste) {
+    var extra = withWaste - raw;
+    return fmt(withWaste) + ' แผ่น' + (extra > 0 ? ' <span class="hint">(' + fmt(raw) + ' + เผื่อเสีย ' + fmt(extra) + ')</span>' : '');
+  }
+
+  function render() {
+    syncForm();
+    var r = calculate(F, S);
+    var warns = $('warns');
+    warns.innerHTML = r.warnings.map(function (w) { return '<div class="warn">⚠️ ' + esc(w) + '</div>'; }).join('');
+
+    if (!r.ok) {
+      $('outTotal').textContent = '–';
+      $('outUnit').textContent = F.type === 'book' ? 'กรอกจำนวนหน้าและจำนวนเล่ม' : 'กรอกจำนวนแผ่น';
+      $('barTotal').textContent = '–';
+      $('barUnit').textContent = $('outUnit').textContent;
+      $('detail').innerHTML = '';
+      $('quotePreview').textContent = '';
+      lastQuote = '';
+      $('btnCopy').disabled = $('btnCopy2').disabled = true;
+      return;
+    }
+
+    var unitWord = r.isBook ? 'เล่มละ' : 'แผ่นละ';
+    $('outTotal').textContent = fmtMoney(r.price) + ' บาท';
+    $('outUnit').textContent = unitWord + ' ' + fmt(r.unit, 2) + ' บาท';
+    $('barTotal').textContent = fmtMoney(r.price) + ' บาท';
+    $('barUnit').textContent = unitWord + ' ' + fmt(r.unit, 2) + ' บาท';
+
+    var h = '';
+    if (r.isBook) {
+      h += row('เนื้อใน ' + fmt(r.innerPages) + ' หน้า → ' + fmt(r.workPerBook) + ' แผ่นงาน/เล่ม', fmt(r.workPerBook * r.qty) + ' แผ่นงาน');
+    }
+    h += row('แผ่นใหญ่' + (r.isBook ? 'เนื้อใน' : '') + ' (' + r.per + ' ชิ้น/แผ่น)', sheetsText(r.innerRaw, r.innerSheets));
+    if (r.isBook && r.separate) h += row('แผ่นใหญ่ปก (' + r.coverPer + ' ปก/แผ่น)', sheetsText(r.coverRaw, r.coverSheets));
+    if (r.isBook && F.laminate !== 'none') h += row('แผ่นเคลือบปก', sheetsText(r.lamRaw, r.lamSheets));
+    h += row('จำนวนด้านที่พิมพ์', fmt(r.sidesPrinted) + ' ด้าน');
+
+    h += row('ค่ากระดาษ', fmtMoney(r.paperInner + r.paperCover) + ' บาท');
+    if (r.isBook && r.separate) {
+      h += row('เนื้อใน ' + fmt(r.innerSheets) + ' × ' + fmtMoney(num(r.innerPaper.price)), fmtMoney(r.paperInner), 'sub');
+      h += row('ปก ' + fmt(r.coverSheets) + ' × ' + fmtMoney(num(r.coverPaper.price)), fmtMoney(r.paperCover), 'sub');
+    } else {
+      h += row(fmt(r.innerSheets) + ' แผ่น × ' + fmtMoney(num(r.innerPaper.price)), fmtMoney(r.paperInner), 'sub');
+    }
+    h += row('ค่าพิมพ์ <span class="hint">(' + fmt(r.sidesPrinted) + ' ด้าน × ' + fmtMoney(num(S.printPerSide)) + ')</span>', fmtMoney(r.printCost) + ' บาท');
+    if (r.isBook) {
+      h += row('ค่าเข้าเล่ม <span class="hint">(' + BINDING_NAMES[F.binding] + ' ' + fmt(r.qty) + ' × ' + fmtMoney(num(S.binding[F.binding])) + ')</span>', fmtMoney(r.bindCost) + ' บาท');
+      h += row('ค่าเคลือบปก' + (F.laminate !== 'none' ? ' <span class="hint">(' + fmt(r.lamSheets) + ' × ' + fmtMoney(num(S.laminate[F.laminate])) + ')</span>' : ''), fmtMoney(r.lamCost) + ' บาท');
+    }
+    h += row('ต้นทุนรวม', fmt(r.cost, 2) + ' บาท', 'sum');
+    h += row('บวกกำไรตามช่วงจำนวน ' + fmt(r.pct) + '%', fmt(r.raw, 2) + ' บาท');
+    h += row('ราคาขาย' + (r.minApplied ? ' <span class="hint">(ใช้ราคาขั้นต่ำ)</span>' : ' <span class="hint">(ปัดขึ้นทีละ ' + fmt(num(S.roundTo)) + ')</span>'), fmtMoney(r.price) + ' บาท', 'sum');
+    h += row('กำไร', fmt(r.profit, 2) + ' บาท (' + fmt(r.profitPct, 1) + '%)', 'sum');
+    $('detail').innerHTML = h;
+
+    lastQuote = quoteText(F, r);
+    $('quotePreview').textContent = lastQuote;
+    $('btnCopy').disabled = $('btnCopy2').disabled = false;
+  }
+
+  // ---------- events หน้าคำนวณ ----------
+  document.querySelectorAll('.seg[data-key]').forEach(function (seg) {
+    seg.addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-val]');
+      if (!b) return;
+      F[seg.getAttribute('data-key')] = b.getAttribute('data-val');
+      saveForm(); render();
+    });
+  });
+  document.querySelectorAll('#view-calc input[data-key], #view-calc select[data-key]').forEach(function (el) {
+    var ev = el.tagName === 'SELECT' ? 'change' : 'input';
+    el.addEventListener(ev, function () {
+      F[el.getAttribute('data-key')] = el.value;
+      saveForm(); render();
+    });
+  });
+
+  var toastTimer;
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('show'); }, 1800);
+  }
+  function copyText(text) {
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      document.body.removeChild(ta);
+      toast(ok ? 'คัดลอกแล้ว วางในไลน์ได้เลย' : 'คัดลอกไม่สำเร็จ กรุณากดค้างที่ข้อความเพื่อคัดลอก');
+    }
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(function () { toast('คัดลอกแล้ว วางในไลน์ได้เลย'); }, fallback);
+    } else fallback();
+  }
+  $('btnCopy').addEventListener('click', function () { if (lastQuote) copyText(lastQuote); });
+  $('btnCopy2').addEventListener('click', function () { if (lastQuote) copyText(lastQuote); });
+
+  // ---------- tabs ----------
+  document.querySelectorAll('.tabs button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var tab = b.getAttribute('data-tab');
+      document.querySelectorAll('.tabs button').forEach(function (x) { x.classList.toggle('active', x === b); });
+      $('view-calc').classList.toggle('hidden', tab !== 'calc');
+      $('view-settings').classList.toggle('hidden', tab !== 'settings');
+      $('mobileBar').classList.toggle('hidden', tab !== 'calc');
+      document.body.classList.toggle('calc-view', tab === 'calc');
+      if (tab === 'settings') renderSettings(); else render();
+      window.scrollTo(0, 0);
+    });
+  });
+
+  // ---------- หน้าตั้งค่า ----------
+  function getPath(obj, path) { return path.split('.').reduce(function (o, k) { return o == null ? o : o[k]; }, obj); }
+  function setPath(obj, path, val) {
+    var ks = path.split('.'), last = ks.pop();
+    ks.reduce(function (o, k) { return o[k]; }, obj)[last] = val;
+  }
+
+  function renderPapers() {
+    $('paperList').innerHTML = S.papers.map(function (p, i) {
+      return '<div class="list-row paper-row" data-i="' + i + '">' +
+        '<div class="name"><label>ชื่อกระดาษ</label><input type="text" data-f="name" value="' + esc(p.name) + '"></div>' +
+        '<div><label>แกรม</label><input type="number" min="0" step="any" inputmode="decimal" data-f="gsm" value="' + esc(p.gsm) + '"></div>' +
+        '<div><label>ราคา/แผ่นใหญ่ (บาท)</label><input type="number" min="0" step="any" inputmode="decimal" data-f="price" value="' + esc(p.price) + '"></div>' +
+        '<div><button type="button" class="btn danger small" data-del="' + i + '" title="ลบ">ลบ</button></div>' +
+        '</div>';
+    }).join('') || '<div class="hint">ยังไม่มีกระดาษ</div>';
+  }
+  function renderTiers() {
+    $('tierList').innerHTML = S.tiers.map(function (t, i) {
+      return '<div class="list-row tier-row" data-i="' + i + '">' +
+        '<div><label>ตั้งแต่จำนวน</label><input type="number" min="0" step="1" inputmode="numeric" data-f="min" value="' + esc(t.min) + '"></div>' +
+        '<div><label>กำไร %</label><input type="number" min="0" step="any" inputmode="decimal" data-f="pct" value="' + esc(t.pct) + '"></div>' +
+        '<div><button type="button" class="btn danger small" data-del="' + i + '">ลบ</button></div>' +
+        '</div>';
+    }).join('') || '<div class="hint">ยังไม่มีช่วง (กำไร 0%)</div>';
+  }
+  function renderSettings() {
+    renderPapers(); renderTiers();
+    document.querySelectorAll('[data-set]').forEach(function (el) {
+      var v = getPath(S, el.getAttribute('data-set'));
+      el.value = v == null ? '' : v;
+    });
+  }
+
+  document.querySelectorAll('[data-set]').forEach(function (el) {
+    el.addEventListener('input', function () {
+      var v = el.type === 'number' ? (el.value === '' ? '' : num(el.value)) : el.value;
+      setPath(S, el.getAttribute('data-set'), v);
+      saveSettings();
+    });
+  });
+
+  function bindList(containerId, listName) {
+    var box = $(containerId);
+    box.addEventListener('input', function (e) {
+      var el = e.target, rowEl = el.closest('[data-i]');
+      if (!rowEl || !el.dataset.f) return;
+      var item = S[listName][+rowEl.dataset.i];
+      item[el.dataset.f] = el.type === 'number' ? (el.value === '' ? '' : num(el.value)) : el.value;
+      saveSettings();
+    });
+    box.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-del]');
+      if (!b) return;
+      var i = +b.dataset.del;
+      var item = S[listName][i];
+      var name = listName === 'papers' ? paperLabel(item) : 'ช่วงตั้งแต่ ' + item.min;
+      if (!confirm('ลบ "' + name + '" ?')) return;
+      S[listName].splice(i, 1);
+      saveSettings();
+      listName === 'papers' ? renderPapers() : renderTiers();
+    });
+  }
+  bindList('paperList', 'papers');
+  bindList('tierList', 'tiers');
+
+  $('btnAddPaper').addEventListener('click', function () {
+    S.papers.push({ id: 'p' + Date.now(), name: 'กระดาษใหม่', gsm: '', price: '' });
+    saveSettings(); renderPapers();
+    var inputs = $('paperList').querySelectorAll('input[data-f="name"]');
+    var last = inputs[inputs.length - 1]; if (last) { last.focus(); last.select(); }
+  });
+  $('btnAddTier').addEventListener('click', function () {
+    var maxMin = S.tiers.reduce(function (m, t) { return Math.max(m, num(t.min)); }, 0);
+    S.tiers.push({ min: maxMin ? maxMin * 2 : 1, pct: '' });
+    saveSettings(); renderTiers();
+  });
+
+  $('btnReset').addEventListener('click', function () {
+    if (!confirm('คืนค่าตั้งค่าทั้งหมดเป็นค่าเริ่มต้น? (รายการกระดาษและราคาที่แก้ไว้จะหายไป)')) return;
+    S = clone(DEFAULTS); saveSettings(); renderSettings(); toast('คืนค่าเริ่มต้นแล้ว');
+  });
+  $('btnExport').addEventListener('click', function () {
+    var blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'ตั้งค่าราคางานพิมพ์-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  });
+  $('btnImport').addEventListener('click', function () { $('importFile').click(); });
+  $('importFile').addEventListener('change', function () {
+    var file = this.files && this.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        S = mergeSettings(JSON.parse(reader.result));
+        saveSettings(); renderSettings(); toast('นำเข้าตั้งค่าแล้ว');
+      } catch (e) { alert('ไฟล์ไม่ถูกต้อง'); }
+    };
+    reader.readAsText(file);
+    this.value = '';
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
