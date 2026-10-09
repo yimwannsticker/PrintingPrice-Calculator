@@ -430,6 +430,20 @@ table.rates td.del { width: 1%; border: 0; padding-left: 6px; }
     return { tier: ts[idx], label: label, belowFirst: qty < lo };
   }
   function rateOf(map, paperId, sides) { var p = map && map[paperId]; return p ? val(p[sides - 1]) : null; }
+  // กันราคาลดที่รอยต่อช่วง: งาน n หน่วยต้องไม่ถูกกว่างานที่ใหญ่สุดของช่วงก่อนหน้า
+  // costFn(tier) = { cost: ราคาทั้งงานด้วยเรทช่วงนั้น, min: เรทต่ำสุดในงาน } หรือ null ถ้าไม่มีเรท
+  // ราคาขั้นต่ำ = ราคาทั้งงานด้วยเรทช่วงก่อน − ส่วนเกินจากช่วงนั้นคิดด้วยเรทต่ำสุด (ไม่ลดลงเมื่อเพิ่มจำนวน)
+  function tierFloor(list, n, costFn) {
+    var ts = sortedTiers(list), best = { value: 0, upto: 0 };
+    for (var i = 0; i < ts.length - 1; i++) {
+      var upto = (val(ts[i + 1].min) || 0) - 1;
+      if (upto >= n) break;
+      var c = costFn(ts[i]); if (c == null) continue;
+      var v = +(c.cost - (n - upto) * c.min).toFixed(2);
+      if (v > best.value) best = { value: v, upto: upto };
+    }
+    return best;
+  }
 
   // ---------- คำนวณ ----------
   function calcSheet(f, s) {
@@ -445,11 +459,14 @@ table.rates td.del { width: 1%; border: 0; padding-left: 6px; }
       return r;
     }
     var per = Math.max(1, int(s.perSheet[f.size]) || 1);
-    var total = qty * rate, minApplied = false;
+    var print = qty * rate;
+    var fl = tierFloor(s.sheetTiers, qty, function (t) { var x = rateOf(t.r[f.size], paper.id, sides); return x == null ? null : { cost: qty * x, min: x }; });
+    var floorAdj = fl.value > print ? fl.value - print : 0, floorUpto = floorAdj ? fl.upto : 0;
+    var total = print + floorAdj, minApplied = false;
     if (total < (val(s.minPrice) || 0)) { total = val(s.minPrice); minApplied = true; }
     return Object.assign(r, {
       ok: true, qty: qty, sides: sides, paper: paper, rate: rate, tierLabel: pick.label,
-      a3: Math.ceil(qty / per), per: per, total: total, unit: total / qty, minApplied: minApplied
+      a3: Math.ceil(qty / per), per: per, print: print, floorAdj: floorAdj, floorUpto: floorUpto, total: total, unit: total / qty, minApplied: minApplied
     });
   }
 
@@ -503,9 +520,18 @@ table.rates td.del { width: 1%; border: 0; padding-left: 6px; }
 
     var printInner = inner * rateInner;
     var printCover = separate ? cover * rateCover : 0;
+    var fl = tierFloor(s.bookTiers, a3, function (t) {
+      var ri = rateOf(t.r, paper.id, sides), rc = separate ? rateOf(t.r, coverPaper.id, coverSides) : 0;
+      return ri == null || rc == null ? null : { cost: inner * ri + cover * rc, min: cover ? Math.min(ri, rc) : ri };
+    });
+    var floorAdj = fl.value > printInner + printCover ? fl.value - printInner - printCover : 0, floorUpto = floorAdj ? fl.upto : 0;
     var bindCost = (bindRate || 0) * books;
-    var lamCost = (lamRate || 0) * lam;
-    var total = printInner + printCover + bindCost + lamCost, minApplied = false;
+    var lamCost = (lamRate || 0) * lam, lamAdj = 0;
+    if (lamRate) {
+      var lf = tierFloor(s.lamTiers, lam, function (t) { var x = val(t.r[f.laminate]); return x == null ? null : { cost: lam * x, min: x }; });
+      if (lf.value > lamCost) { lamAdj = lf.value - lamCost; lamCost = lf.value; }
+    }
+    var total = printInner + printCover + floorAdj + bindCost + lamCost, minApplied = false;
     if (total < (val(s.minPrice) || 0)) { total = val(s.minPrice); minApplied = true; }
 
     return Object.assign(r, {
@@ -513,7 +539,7 @@ table.rates td.del { width: 1%; border: 0; padding-left: 6px; }
       paper: paper, coverPaper: coverPaper, innerPages: innerPages, sheetsPerBook: sheetsPerBook, per: per, coverPer: coverPer,
       innerRaw: innerRaw, coverRaw: coverRaw, lamRaw: lamRaw, inner: inner, cover: cover, lam: lam, a3: a3,
       tierLabel: pick.label, rateInner: rateInner, rateCover: rateCover, bindRate: bindRate, lamRate: lamRate, lamLabel: lamPick ? lamPick.label : '',
-      printInner: printInner, printCover: printCover, bindCost: bindCost, lamCost: lamCost,
+      printInner: printInner, printCover: printCover, floorAdj: floorAdj, floorUpto: floorUpto, bindCost: bindCost, lamCost: lamCost, lamAdj: lamAdj,
       total: total, unit: total / books, minApplied: minApplied
     });
   }
@@ -612,13 +638,15 @@ table.rates td.del { width: 1%; border: 0; padding-left: 6px; }
       h += row('รวม ' + fmt(r.a3) + ' แผ่น A3', 'ช่วง ' + r.tierLabel, 'info');
       h += row('ค่าพิมพ์เนื้อใน <span class="hint">(' + fmt(r.inner) + ' × ' + money(r.rateInner) + ')</span>', money(r.printInner) + ' บาท');
       if (r.separate) h += row('ค่าพิมพ์ปก <span class="hint">(' + fmt(r.cover) + ' × ' + money(r.rateCover) + ')</span>', money(r.printCover) + ' บาท');
+      if (r.floorAdj) h += row('ปรับราคาที่รอยต่อช่วง <span class="hint">(ไม่ต่ำกว่างาน ' + fmt(r.floorUpto) + ' แผ่น A3)</span>', '+' + money(r.floorAdj) + ' บาท');
       h += row('ค่าเข้าเล่ม <span class="hint">(' + BINDING_NAMES[F.binding] + (r.bindRate != null ? ' ' + fmt(r.books) + ' × ' + money(r.bindRate) : ' ยังไม่ตั้งราคา') + ')</span>', money(r.bindCost) + ' บาท');
-      if (F.laminate !== 'none') h += row('ค่า' + LAMINATE_NAMES[F.laminate] + ' <span class="hint">(' + (r.lamRate != null ? fmt(r.lam) + ' แผ่น A3 × ' + money(r.lamRate) + ', ช่วง ' + r.lamLabel : 'ยังไม่ตั้งราคา') + ')</span>', money(r.lamCost) + ' บาท');
+      if (F.laminate !== 'none') h += row('ค่า' + LAMINATE_NAMES[F.laminate] + ' <span class="hint">(' + (r.lamRate != null ? fmt(r.lam) + ' แผ่น A3 × ' + money(r.lamRate) + ', ช่วง ' + r.lamLabel + (r.lamAdj ? ', ปรับที่รอยต่อช่วง +' + money(r.lamAdj) : '') : 'ยังไม่ตั้งราคา') + ')</span>', money(r.lamCost) + ' บาท');
     } else {
       h += row('ช่วงราคา', r.tierLabel, 'info');
       h += row('ใช้ประมาณ', fmt(r.a3) + ' แผ่น A3', 'info');
       h += row('ราคาต่อใบ', money(r.rate) + ' บาท');
-      h += row('ค่าพิมพ์ <span class="hint">(' + fmt(r.qty) + ' × ' + money(r.rate) + ')</span>', money(r.qty * r.rate) + ' บาท');
+      h += row('ค่าพิมพ์ <span class="hint">(' + fmt(r.qty) + ' × ' + money(r.rate) + ')</span>', money(r.print) + ' บาท');
+      if (r.floorAdj) h += row('ปรับราคาที่รอยต่อช่วง <span class="hint">(ไม่ต่ำกว่างาน ' + fmt(r.floorUpto) + ' ใบ)</span>', '+' + money(r.floorAdj) + ' บาท');
     }
     h += row('ราคาขายรวม' + (r.minApplied ? ' <span class="hint">(ราคาขั้นต่ำ)</span>' : ''), money(r.total) + ' บาท', 'sum');
     $('detail').innerHTML = h;
