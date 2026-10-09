@@ -169,15 +169,24 @@ table.rates td.del { width: 1%; border: 0; padding-left: 6px; }
             <label class="label" for="qty">จำนวน (ใบ)</label>
             <input type="number" id="qty" data-key="qty" min="1" step="1" inputmode="numeric" placeholder="เช่น 100">
           </div>
+          <div class="field only-book">
+            <span class="label">ปก</span>
+            <div class="seg" data-key="coverMode">
+              <button type="button" data-val="same">กระดาษเดียวกับเนื้อใน</button>
+              <button type="button" data-val="separate">กระดาษปกแยก</button>
+            </div>
+            <div class="hint" id="coverHint" style="margin-top:4px"></div>
+          </div>
           <div class="row2 only-book field">
             <div>
-              <label class="label" for="pages">หน้ารวมต่อเล่ม</label>
+              <label class="label" for="pages" id="pagesLabel">หน้ารวมต่อเล่ม</label>
               <input type="number" id="pages" data-key="pages" min="1" step="1" inputmode="numeric" placeholder="รวมปก">
             </div>
             <div>
               <label class="label" for="books">จำนวนเล่ม</label>
               <input type="number" id="books" data-key="books" min="1" step="1" inputmode="numeric" placeholder="เช่น 20">
             </div>
+            <div class="hint" id="pagesTotal" style="grid-column:1/-1"></div>
           </div>
           <div class="field">
             <span class="label">พิมพ์สี</span>
@@ -202,14 +211,6 @@ table.rates td.del { width: 1%; border: 0; padding-left: 6px; }
               <button type="button" data-val="perfect">ไสกาว</button>
               <button type="button" data-val="ring">สันห่วง</button>
             </div>
-          </div>
-          <div class="field">
-            <span class="label">ปก</span>
-            <div class="seg" data-key="coverMode">
-              <button type="button" data-val="same">กระดาษเดียวกับเนื้อใน</button>
-              <button type="button" data-val="separate">กระดาษปกแยก</button>
-            </div>
-            <div class="hint" id="coverHint" style="margin-top:4px"></div>
           </div>
           <div class="field only-separate">
             <label class="label" for="coverPaperId">กระดาษปก</label>
@@ -422,10 +423,12 @@ table.rates td.del { width: 1%; border: 0; padding-left: 6px; }
 
   function calcBook(f, s) {
     var r = { ok: false, warnings: [], isBook: true };
-    var pages = int(f.pages), books = int(f.books);
-    if (!pages || !books) return r;
+    var pagesIn = int(f.pages), books = int(f.books);
+    if (!pagesIn || !books) return r;
     var sides = f.sides === '1' ? 1 : 2;
     var separate = f.coverMode === 'separate';
+    // ปกแยก: ช่องจำนวนหน้า = เนื้อในอย่างเดียว แล้วบวกปก 4 หน้า
+    var innerPages = pagesIn, pages = separate ? pagesIn + 4 : pagesIn;
     var coverSides = f.coverSides === '2' ? 2 : 1;
     var paper = paperById(s, f.paperId), coverPaper = separate ? paperById(s, f.coverPaperId) : null;
     if (!paper || (separate && !coverPaper)) { r.warnings.push('ยังไม่มีรายการกระดาษ'); return r; }
@@ -434,7 +437,6 @@ table.rates td.del { width: 1%; border: 0; padding-left: 6px; }
     var waste = val(s.wastePct) || 0;
     function addWaste(n) { return n > 0 ? ceilSafe(n * (1 + waste / 100)) : 0; }
 
-    var innerPages = separate ? Math.max(pages - 4, 0) : pages;
     var sheetsPerBook = Math.ceil(innerPages / sides);
     var innerRaw = Math.ceil(sheetsPerBook * books / per);
     var coverRaw = separate ? Math.ceil(books / coverPer) : 0;
@@ -443,9 +445,8 @@ table.rates td.del { width: 1%; border: 0; padding-left: 6px; }
     var a3 = inner + cover;
 
     // เงื่อนไขการเข้าเล่ม (เตือนอย่างเดียว)
-    if (separate && pages <= 4) r.warnings.push('ปกแยกนับเป็น 4 หน้า — หน้ารวม ' + pages + ' หน้า ไม่เหลือเนื้อใน');
     if (f.binding === 'saddle') {
-      if (pages % 4 !== 0) r.warnings.push('เย็บมุงหลังคา: หน้ารวมต้องหาร 4 ลงตัว (ตอนนี้ ' + pages + ' หน้า แนะนำ ' + Math.ceil(pages / 4) * 4 + ' หน้า)');
+      if (pages % 4 !== 0) r.warnings.push('เย็บมุงหลังคา: หน้ารวม (เนื้อใน + ปก) ต้องหาร 4 ลงตัว (ตอนนี้ ' + pages + ' หน้า แนะนำ' + (separate ? 'เนื้อใน ' + (Math.ceil(pages / 4) * 4 - 4) : ' ' + Math.ceil(pages / 4) * 4) + ' หน้า)');
       if (pages > int(s.saddleMaxPages)) r.warnings.push('เย็บมุงหลังคา: ไม่ควรเกิน ' + fmt(int(s.saddleMaxPages)) + ' หน้า (ตอนนี้ ' + fmt(pages) + ' หน้า)');
     }
     var leaves = sheetsPerBook + (separate ? 2 : 0);
@@ -537,7 +538,11 @@ table.rates td.del { width: 1%; border: 0; padding-left: 6px; }
     document.querySelectorAll('.only-book').forEach(function (el) { el.classList.toggle('hidden', !isBook); });
     document.querySelectorAll('.only-sheet').forEach(function (el) { el.classList.toggle('hidden', isBook); });
     document.querySelectorAll('.only-separate').forEach(function (el) { el.classList.toggle('hidden', F.coverMode !== 'separate'); });
-    $('coverHint').textContent = F.coverMode === 'separate' ? 'นับปกเป็น 4 หน้า ที่เหลือเป็นเนื้อใน' : 'ปกพิมพ์รวมอยู่ในเนื้อใน';
+    var sep = F.coverMode === 'separate';
+    $('coverHint').textContent = sep ? 'กรอกเฉพาะหน้าเนื้อใน ระบบบวกปกให้ 4 หน้า' : 'ปกพิมพ์รวมอยู่ในเนื้อใน กรอกหน้ารวมทั้งเล่ม';
+    $('pagesLabel').textContent = sep ? 'หน้าเนื้อในต่อเล่ม' : 'หน้ารวมต่อเล่ม';
+    $('pages').placeholder = sep ? 'ไม่รวมปก' : 'รวมปก';
+    $('pagesTotal').textContent = sep && int(F.pages) ? 'รวมทั้งเล่ม ' + fmt(int(F.pages) + 4) + ' หน้า (เนื้อใน ' + fmt(int(F.pages)) + ' + ปก 4)' : '';
   }
   function row(label, value, cls) { return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + label + '</td><td>' + value + '</td></tr>'; }
   function sheetsText(raw, n) { var x = n - raw; return fmt(n) + ' แผ่น' + (x > 0 ? ' <span class="hint">(+เผื่อเสีย ' + fmt(x) + ')</span>' : ''); }
