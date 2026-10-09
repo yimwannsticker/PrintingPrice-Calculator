@@ -283,15 +283,20 @@ table.rates td.del { width: 1%; border: 0; padding-left: 6px; }
     </div>
 
     <div class="card">
-      <h2>เข้าเล่มและเคลือบ</h2>
+      <h2>ค่าเข้าเล่ม</h2>
       <div class="set-grid">
         <div><label class="label" for="s-bind-staple">เย็บแม็กมุม (บาท/เล่ม)</label><input type="number" min="0" step="any" inputmode="decimal" id="s-bind-staple" data-set="binding.staple"></div>
         <div><label class="label" for="s-bind-saddle">เย็บมุงหลังคา (บาท/เล่ม)</label><input type="number" min="0" step="any" inputmode="decimal" id="s-bind-saddle" data-set="binding.saddle"></div>
         <div><label class="label" for="s-bind-perfect">ไสกาว (บาท/เล่ม)</label><input type="number" min="0" step="any" inputmode="decimal" id="s-bind-perfect" data-set="binding.perfect"></div>
         <div><label class="label" for="s-bind-ring">สันห่วง (บาท/เล่ม)</label><input type="number" min="0" step="any" inputmode="decimal" id="s-bind-ring" data-set="binding.ring"></div>
-        <div><label class="label" for="s-lam-matte">เคลือบด้าน (บาท/แผ่น A3)</label><input type="number" min="0" step="any" inputmode="decimal" id="s-lam-matte" data-set="laminate.matte"></div>
-        <div><label class="label" for="s-lam-gloss">เคลือบเงา (บาท/แผ่น A3)</label><input type="number" min="0" step="any" inputmode="decimal" id="s-lam-gloss" data-set="laminate.gloss"></div>
       </div>
+    </div>
+
+    <div class="card">
+      <h2>เรทเคลือบปก (บาท / แผ่น A3)</h2>
+      <div class="hint" style="margin-bottom:10px">ขั้นบันไดนับจากจำนวนแผ่น A3 ที่เคลือบในงาน ช่องว่าง = ยังไม่มีเรท</div>
+      <div class="table-wrap"><table class="rates" id="lamTable" style="min-width:0"></table></div>
+      <button type="button" class="btn ghost small" id="btnAddLamTier" style="margin-top:10px">+ เพิ่มช่วง</button>
     </div>
 
     <div class="card">
@@ -334,7 +339,7 @@ table.rates td.del { width: 1%; border: 0; padding-left: 6px; }
 <div class="toast" id="toast" role="status"></div>
 </template>
 <div id="app"></div>
-<script type="application/json" id="rates-data">{"updatedAt":"","shopName":"ยิ้มหวาน สตูดิโอ","quoteNote":"","papers":[{"id":"p120","name":"อาร์ต 120 แกรม"},{"id":"p250","name":"อาร์ต 250 แกรม"}],"bookTiers":[{"min":1,"r":{"p120":[20,36],"p250":[22,38]}},{"min":50,"r":{"p120":[18,26],"p250":[19,28]}},{"min":100,"r":{"p120":[15,20],"p250":[17,22]}},{"min":150,"r":{"p120":[14,18],"p250":[16,20]}},{"min":250,"r":{"p120":[12,17],"p250":[14,19]}}],"sheetTiers":[{"min":50,"r":{"A4":{"p120":[10,18],"p250":[11,19]},"A5":{"p120":[6,10],"p250":[6.5,10.5]},"A6":{}}},{"min":100,"r":{"A4":{"p120":[9,13],"p250":[9.5,14]},"A5":{"p120":[5.5,9],"p250":[6,9.5]},"A6":{}}},{"min":200,"r":{"A4":{"p120":[7.5,10],"p250":[8.5,11]},"A5":{"p120":[5,8],"p250":[5.5,8.5]},"A6":{}}},{"min":300,"r":{"A4":{"p120":[7,9],"p250":[8,10]},"A5":{"p120":[4.5,7],"p250":[5,7.5]},"A6":{}}},{"min":500,"r":{"A4":{"p120":[6,8.5],"p250":[7,9.5]},"A5":{"p120":[4,6.5],"p250":[4.5,7]},"A6":{}}}],"binding":{"staple":"","saddle":"","perfect":"","ring":""},"laminate":{"matte":"","gloss":""},"perSheet":{"A4":2,"A5":4,"A6":9},"coverPerSheet":{"A4":1,"A5":2,"A6":4},"wastePct":0,"minPrice":0,"saddleMaxPages":60,"ringMaxSheets":200}</script>
+<script type="application/json" id="rates-data">{"updatedAt":"","shopName":"ยิ้มหวาน สตูดิโอ","quoteNote":"","papers":[{"id":"p120","name":"อาร์ต 120 แกรม"},{"id":"p250","name":"อาร์ต 250 แกรม"}],"bookTiers":[{"min":1,"r":{"p120":[20,36],"p250":[22,38]}},{"min":50,"r":{"p120":[18,26],"p250":[19,28]}},{"min":100,"r":{"p120":[15,20],"p250":[17,22]}},{"min":150,"r":{"p120":[14,18],"p250":[16,20]}},{"min":250,"r":{"p120":[12,17],"p250":[14,19]}}],"sheetTiers":[{"min":50,"r":{"A4":{"p120":[10,18],"p250":[11,19]},"A5":{"p120":[6,10],"p250":[6.5,10.5]},"A6":{}}},{"min":100,"r":{"A4":{"p120":[9,13],"p250":[9.5,14]},"A5":{"p120":[5.5,9],"p250":[6,9.5]},"A6":{}}},{"min":200,"r":{"A4":{"p120":[7.5,10],"p250":[8.5,11]},"A5":{"p120":[5,8],"p250":[5.5,8.5]},"A6":{}}},{"min":300,"r":{"A4":{"p120":[7,9],"p250":[8,10]},"A5":{"p120":[4.5,7],"p250":[5,7.5]},"A6":{}}},{"min":500,"r":{"A4":{"p120":[6,8.5],"p250":[7,9.5]},"A5":{"p120":[4,6.5],"p250":[4.5,7]},"A6":{}}}],"binding":{"staple":"","saddle":"","perfect":"","ring":""},"lamTiers":[{"min":1,"r":{"matte":15,"gloss":18}},{"min":5,"r":{"matte":12,"gloss":14}},{"min":10,"r":{"matte":10,"gloss":12}},{"min":20,"r":{"matte":8,"gloss":10}},{"min":50,"r":{"matte":7,"gloss":9}},{"min":100,"r":{"matte":6,"gloss":7}}],"perSheet":{"A4":2,"A5":4,"A6":9},"coverPerSheet":{"A4":1,"A5":2,"A6":4},"wastePct":0,"minPrice":0,"saddleMaxPages":60,"ringMaxSheets":200}</script>
 <script id="app-script">
 (function () {
   'use strict';
@@ -369,7 +374,10 @@ table.rates td.del { width: 1%; border: 0; padding-left: 6px; }
     s.papers = s.papers || []; s.bookTiers = s.bookTiers || []; s.sheetTiers = s.sheetTiers || [];
     s.bookTiers.forEach(function (t) { t.r = t.r || {}; });
     s.sheetTiers.forEach(function (t) { t.r = t.r || {}; SIZES.forEach(function (z) { t.r[z] = t.r[z] || {}; }); });
-    ['binding', 'laminate', 'perSheet', 'coverPerSheet'].forEach(function (k) { s[k] = s[k] || {}; });
+    ['binding', 'perSheet', 'coverPerSheet'].forEach(function (k) { s[k] = s[k] || {}; });
+    if (!s.lamTiers) s.lamTiers = s.laminate ? [{ min: 1, r: { matte: s.laminate.matte, gloss: s.laminate.gloss } }] : [];
+    delete s.laminate;
+    s.lamTiers.forEach(function (t) { t.r = t.r || {}; });
     return s;
   }
   function paperById(s, id) {
@@ -452,8 +460,12 @@ table.rates td.del { width: 1%; border: 0; padding-left: 6px; }
 
     var bindRate = val(s.binding[f.binding]);
     if (bindRate == null) r.warnings.push('ยังไม่ได้ตั้งราคา' + BINDING_NAMES[f.binding] + ' — ราคานี้ยังไม่รวมค่าเข้าเล่ม');
-    var lamRate = f.laminate !== 'none' ? val(s.laminate[f.laminate]) : 0;
-    if (lamRate == null) r.warnings.push('ยังไม่ได้ตั้งราคา' + LAMINATE_NAMES[f.laminate] + ' — ราคานี้ยังไม่รวมค่าเคลือบ');
+    var lamRate = 0, lamPick = null;
+    if (f.laminate !== 'none') {
+      lamPick = pickTier(s.lamTiers, lam, 'แผ่น');
+      lamRate = lamPick ? val(lamPick.tier.r[f.laminate]) : null;
+      if (lamRate == null) r.warnings.push('ยังไม่ได้ตั้งราคา' + LAMINATE_NAMES[f.laminate] + ' — ราคานี้ยังไม่รวมค่าเคลือบ');
+    }
 
     var printInner = inner * rateInner;
     var printCover = separate ? cover * rateCover : 0;
@@ -466,7 +478,7 @@ table.rates td.del { width: 1%; border: 0; padding-left: 6px; }
       ok: true, pages: pages, books: books, qty: books, sides: sides, separate: separate, coverSides: coverSides,
       paper: paper, coverPaper: coverPaper, innerPages: innerPages, sheetsPerBook: sheetsPerBook, per: per, coverPer: coverPer,
       innerRaw: innerRaw, coverRaw: coverRaw, lamRaw: lamRaw, inner: inner, cover: cover, lam: lam, a3: a3,
-      tierLabel: pick.label, rateInner: rateInner, rateCover: rateCover, bindRate: bindRate, lamRate: lamRate,
+      tierLabel: pick.label, rateInner: rateInner, rateCover: rateCover, bindRate: bindRate, lamRate: lamRate, lamLabel: lamPick ? lamPick.label : '',
       printInner: printInner, printCover: printCover, bindCost: bindCost, lamCost: lamCost,
       total: total, unit: total / books, minApplied: minApplied
     });
@@ -558,7 +570,7 @@ table.rates td.del { width: 1%; border: 0; padding-left: 6px; }
       h += row('ค่าพิมพ์เนื้อใน <span class="hint">(' + fmt(r.inner) + ' × ' + money(r.rateInner) + ')</span>', money(r.printInner) + ' บาท');
       if (r.separate) h += row('ค่าพิมพ์ปก <span class="hint">(' + fmt(r.cover) + ' × ' + money(r.rateCover) + ')</span>', money(r.printCover) + ' บาท');
       h += row('ค่าเข้าเล่ม <span class="hint">(' + BINDING_NAMES[F.binding] + (r.bindRate != null ? ' ' + fmt(r.books) + ' × ' + money(r.bindRate) : ' ยังไม่ตั้งราคา') + ')</span>', money(r.bindCost) + ' บาท');
-      if (F.laminate !== 'none') h += row('ค่า' + LAMINATE_NAMES[F.laminate] + ' <span class="hint">(' + (r.lamRate != null ? fmt(r.lam) + ' × ' + money(r.lamRate) : 'ยังไม่ตั้งราคา') + ')</span>', money(r.lamCost) + ' บาท');
+      if (F.laminate !== 'none') h += row('ค่า' + LAMINATE_NAMES[F.laminate] + ' <span class="hint">(' + (r.lamRate != null ? fmt(r.lam) + ' แผ่น A3 × ' + money(r.lamRate) + ', ช่วง ' + r.lamLabel : 'ยังไม่ตั้งราคา') + ')</span>', money(r.lamCost) + ' บาท');
     } else {
       h += row('ช่วงราคา', r.tierLabel, 'info');
       h += row('ใช้ประมาณ', fmt(r.a3) + ' แผ่น A3', 'info');
@@ -655,6 +667,12 @@ table.rates td.del { width: 1%; border: 0; padding-left: 6px; }
     }).join('') || '<div class="hint" style="margin-bottom:8px">ยังไม่มีกระดาษ</div>';
     $('bookTable').innerHTML = tierTable(D.bookTiers, 'bookTiers', 'ตั้งแต่<br>(แผ่น A3)', function (t) { return t.r; }, function (i) { return 'bookTiers.' + i + '.r'; });
     $('sheetTable').innerHTML = tierTable(D.sheetTiers, 'sheetTiers', 'ตั้งแต่<br>(ใบ)', function (t) { return t.r[sheetSize]; }, function (i) { return 'sheetTiers.' + i + '.r.' + sheetSize; });
+    var lh = '<thead><tr><th>ตั้งแต่<br>(แผ่น A3)</th><th>เคลือบด้าน</th><th>เคลือบเงา</th><th class="del" style="background:transparent"></th></tr></thead><tbody>';
+    D.lamTiers.forEach(function (t, i) {
+      lh += '<tr><td>' + numInput('lamTiers.' + i + '.min', t.min) + '</td><td>' + numInput('lamTiers.' + i + '.r.matte', t.r.matte) + '</td><td>' +
+        numInput('lamTiers.' + i + '.r.gloss', t.r.gloss) + '</td><td class="del"><button type="button" class="btn danger small" data-del-tier="lamTiers" data-i="' + i + '">ลบ</button></td></tr>';
+    });
+    $('lamTable').innerHTML = lh + '</tbody>';
     $('sheetSizeSeg').querySelectorAll('button').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-val') === sheetSize); });
     document.querySelectorAll('#view-settings [data-set]').forEach(function (el) {
       var v = getPath(D, el.getAttribute('data-set')); el.value = v == null ? '' : v;
@@ -718,6 +736,7 @@ table.rates td.del { width: 1%; border: 0; padding-left: 6px; }
     D[list].push(mk(max ? max * 2 : 1)); renderSettings();
   }
   $('btnAddBookTier').addEventListener('click', function () { addTier('bookTiers', function (m) { return { min: m, r: {} }; }); });
+  $('btnAddLamTier').addEventListener('click', function () { addTier('lamTiers', function (m) { return { min: m, r: {} }; }); });
   $('btnAddSheetTier').addEventListener('click', function () { addTier('sheetTiers', function (m) { return { min: m, r: { A4: {}, A5: {}, A6: {} } }; }); });
   $('btnDiscard').addEventListener('click', function () {
     if (!confirmTap(this, 'ยกเลิกการแก้ไขทั้งหมด? กดอีกครั้งเพื่อยืนยัน')) return;
@@ -742,7 +761,7 @@ table.rates td.del { width: 1%; border: 0; padding-left: 6px; }
   $('btnSave').addEventListener('click', function () {
     if (!artifactApi || !isDirty()) return;
     var next = clone(D);
-    next.bookTiers = sortedTiers(next.bookTiers); next.sheetTiers = sortedTiers(next.sheetTiers);
+    next.bookTiers = sortedTiers(next.bookTiers); next.sheetTiers = sortedTiers(next.sheetTiers); next.lamTiers = sortedTiers(next.lamTiers);
     next.updatedAt = new Date().toISOString();
     var btn = this; btn.disabled = true; $('saveMsg').textContent = 'กำลังบันทึก…';
     artifactApi.publish(buildPage(next)).then(function () {
